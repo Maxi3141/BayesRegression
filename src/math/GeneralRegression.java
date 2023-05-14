@@ -107,6 +107,7 @@ public class GeneralRegression {
 		Matrix A = dataMatrix.getTranspose().getMultiplication(dataMatrix);
 		Matrix b = dataMatrix.getTranspose().getMultiplication(y);
 		
+		// Maybe change this to something different in future? Is MINRES the right choice?
 		weights = Solvers.MINRES(A, b).getContentAsVector();
 	}
 

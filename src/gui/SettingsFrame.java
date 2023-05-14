@@ -3,6 +3,7 @@ package gui;
 import javax.swing.JFrame;
 import javax.swing.JTabbedPane;
 
+import gui.settings.InfoPanel;
 import gui.settings.PriorSettings;
 import gui.settings.RegressionSettings;
 import math.DataManager;
@@ -15,6 +16,7 @@ public class SettingsFrame extends JFrame {
 
 	JTabbedPane settingTabs;
 	
+	InfoPanel infoPanel;
 	RegressionSettings regressionTab;
 	PriorSettings priorTab;
 	
@@ -25,10 +27,12 @@ public class SettingsFrame extends JFrame {
 		refDataManager = refDataManagerNew;
 		refAnimationPanel = refAnimationPanelNew;
 		
+		infoPanel = new InfoPanel();
 		regressionTab = new RegressionSettings(this);
 		priorTab = new PriorSettings(this);
 		
 		settingTabs = new JTabbedPane(JTabbedPane.TOP,JTabbedPane.SCROLL_TAB_LAYOUT);
+		settingTabs.addTab("Info", infoPanel);
 		settingTabs.addTab("Regression", regressionTab);
 		settingTabs.addTab("Prior", priorTab);
 		
@@ -39,12 +43,16 @@ public class SettingsFrame extends JFrame {
 		setVisible(true);
 	}
 	
+	/* Resize prior settings according to the new regression order
+	*  and tell dataManager to adjust all connected math
+	*/
 	public void setRegressionOrder(int order) {
 		priorTab.updateDimensions(order + 1);
 		priorTab.updateGUIFormat();
 		refDataManager.setRegressionOrder(order);
 		refAnimationPanel.repaint();
 	}
+	
 	
 	public void setRegressionSigmaSq(double sigmaSqNew) {
 		refDataManager.setRegressionSigmaSq(sigmaSqNew);

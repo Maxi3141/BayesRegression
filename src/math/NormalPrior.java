@@ -34,9 +34,6 @@ public class NormalPrior implements GeneralPrior {
 	public void setMatrices(Matrix muNew, Matrix sigmaNew) {
 		mu = new Matrix( muNew );
 		sigma = new Matrix( sigmaNew );
-	/*	System.out.println("mu, sigma = ");
-		mu.debugPrint();
-		sigma.debugPrint();	*/
 		invSigma = Solvers.invertMatrix( sigma );
 		sigma.updateDeterminante();
 	}

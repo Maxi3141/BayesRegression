@@ -79,6 +79,9 @@ public class PriorSettings extends JPanel implements ActionListener {
 		order = orderNew;
 	}
 	
+	/* Update dimensions of prior input to new regression order.
+	 * Remember old inputs and fill new ones (if order was increased) with identity matrix
+	 */
 	public void updateGUIFormat() {
 		muContentText = new JTextField[order];
 		sigmaContentText = new JTextField[order][order];

@@ -21,7 +21,6 @@ public class NormalPriorPredictor {
 	public void setPriorParameters(Matrix priorMuNew, Matrix priorSigmaNew) {
 		priorMu = priorMuNew;
 		priorSigma = priorSigmaNew;
-	//	priorSigma.updateDeterminante();
 	}
 	
 	public int getOrder() {
@@ -30,7 +29,6 @@ public class NormalPriorPredictor {
 	
 	public void setRegressionSigmaSquared(double regressionSigmaSqNew) {
 		regressionSigmaSq = regressionSigmaSqNew;
-		System.out.println("Set regression sigma sq set to " +  regressionSigmaSq + " in NormalPriorPredictor.");
 	}
 	
 	public double[] evaluateTotal(Matrix x) {
