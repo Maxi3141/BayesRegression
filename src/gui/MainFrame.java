@@ -10,12 +10,16 @@ public class MainFrame extends JFrame {
 	
 	private static final long serialVersionUID = -8196795869145497676L;
 
+	// aniPanel controlls everything that is connected to the animation and its interaction with the user
 	AnimationPanel aniPanel;
 	
+	// dataManager controlls the data and coordinates all mathematical computing
 	DataManager dataManager;
 	
+	// settings for the regression
 	SettingsFrame settingsFrame;
 	
+	// setting for the animation
 	AnimationSettingsPanel aniSetPanel;
 	
 	public MainFrame() {

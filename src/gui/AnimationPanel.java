@@ -52,7 +52,7 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 	float strokeWidthOutput = 2.0f;
 	boolean useMultithreading = true;
 	int numCores = 4;
-	int densityResolutionX = 10;
+	int densityResolutionX = 4;
 	int densityResolutionY = 1;
 	Color[][] priorPredictionColorTable;
 	Color[][] posteriorPredictionColorTable;
@@ -217,15 +217,7 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 	}
 	
 	public void paintComponent(Graphics g) {
-		super.paintComponent(g);
-		
-	/*	if(refDataManager.getDataList().size() > 0 && drawPosteriorPrediction == 2) {
-			paintPosteriorPredictionFull(g);
-		} */ 
-		
-		if(drawPriorPrediction == 2) {
-			paintPriorPredictionFull(g);
-		}
+		super.paintComponent(g); 
 		
 		// Create the coordinate system
 		paintCoordinateGrid(g);
@@ -246,12 +238,15 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 			paintPriorPredictionSimple(g);
 		}
 		
+		if(drawPriorPrediction == 2) {
+			paintPriorPredictionFull(g);
+		}
+		
 		// Draw posterior prediction
 		if(refDataManager.getDataList().size() > 0 && drawPosteriorPrediction == 1) {
 			paintPosteriorPredictionSimple(g);
 		}
 		
-		//DEBUG
 		if(refDataManager.getDataList().size() > 0 && drawPosteriorPrediction == 2) {
 			paintPosteriorPredictionFull(g);
 		}
@@ -272,6 +267,7 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	// Iterate over all visible x, compute corresponding y of MLE and plot this in coordinate System
 	void paintRegression(Graphics g) {
 		Graphics2D g2 = (Graphics2D) g;
 		g2.setColor(mleColor);
@@ -318,14 +314,17 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		paintSinglePosteriorLevel(g, paramDensityLevels[0], posteriorColor[0]);
 	}
 	
+	/* Iterate over all visible x, find maximizing and minimizing weights at that x
+	*  and plot y corresponding to these weights
+	*/
 	void paintSinglePriorLevel(Graphics g, double level, Color col) {
 		g.setColor(col);
 		int resolution = 2;
 		double xOld = getNumberFromPixel(0, 0)[0];
-		double[] yOld = refDataManager.evaluatePriorForPolynomial(level, xOld);
+		double[] yOld = refDataManager.evaluatePrior(level, xOld);
 		for(int i = 1; i < getWidth(); i += resolution) {
 			double xNew = getNumberFromPixel(i, 0)[0];
-			double[] yNew = refDataManager.evaluatePriorForPolynomial(level, xNew);
+			double[] yNew = refDataManager.evaluatePrior(level, xNew);
 			int[] pixelBotOld = getPixelFromNumber(xOld, yOld[1]);
 			int[] pixelTopOld = getPixelFromNumber(xOld, yOld[0]);
 			int[] pixelBotNew = getPixelFromNumber(xNew, yNew[1]);
@@ -338,14 +337,15 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	// See paintSinglePriorLevel(...)
 	void paintSinglePosteriorLevel(Graphics g, double level, Color col) {
 		g.setColor(col);
 		int resolution = 2;
 		double xOld = getNumberFromPixel(0, 0)[0];
-		double[] yOld = refDataManager.evaluatePosteriorForPolynomial(level, xOld);
+		double[] yOld = refDataManager.evaluatePosterior(level, xOld);
 		for(int i = 1; i < getWidth(); i += resolution) {
 			double xNew = getNumberFromPixel(i, 0)[0];
-			double[] yNew = refDataManager.evaluatePosteriorForPolynomial(level, xNew);
+			double[] yNew = refDataManager.evaluatePosterior(level, xNew);
 			int[] pixelBotOld = getPixelFromNumber(xOld, yOld[1]);
 			int[] pixelTopOld = getPixelFromNumber(xOld, yOld[0]);
 			int[] pixelBotNew = getPixelFromNumber(xNew, yNew[1]);
@@ -358,15 +358,18 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	/* Iterate over all visible x and compute mean and variance at that x.
+	 * Plot mean, mean - variance and mean + variance in coordinate system.
+	 */
 	void paintPriorPredictionSimple(Graphics g) {
 		int resolution = 1;
 		Graphics2D g2 = (Graphics2D) g;
 		g2.setStroke(new BasicStroke(strokeWidthOutput));
 		double xOld = getNumberFromPixel(0, 0)[0];
-		double[] yOld = refDataManager.evaluatePriorPredictionForPolynomialSimple(xOld);
+		double[] yOld = refDataManager.evaluatePriorPredictionSimple(xOld);
 		for(int i = 1; i < getWidth(); i += resolution) {
 			double xNew = getNumberFromPixel(i, 0)[0];
-			double[] yNew = refDataManager.evaluatePriorPredictionForPolynomialSimple(xNew);
+			double[] yNew = refDataManager.evaluatePriorPredictionSimple(xNew);
 			int[] pixelOldMid = getPixelFromNumber(xOld, yOld[0]);
 			int[] pixelOldBot = getPixelFromNumber(xOld, yOld[0] - yOld[1]);
 			int[] pixelOldTop = getPixelFromNumber(xOld, yOld[0] + yOld[1]);
@@ -383,6 +386,7 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	// Paint prior prediction as more detailed density by using transparency. Single core and multi core mode available.
 	void paintPriorPredictionFull(Graphics g) {
 		if(useMultithreading) {
 			paintPriorPredictionFullMultithreading(g);
@@ -391,9 +395,9 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	// Split coordinate system in vertical stripes. Assign computation in each stripe to a new CPU core by starting a new thread.
 	void paintPriorPredictionFullMultithreading(Graphics g) {
 		int pixelsPerCore = (int)Math.ceil((double)getWidth() / (numCores * densityResolutionX));
-		// First generate the colors for all pixels using multithreading and store all values in posteriorPredictionColorTable
 		for(int i = 0; i < numCores; i++) {
 			final int helperI = i;
 			Thread t = new Thread(() -> 
@@ -408,6 +412,7 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	// See paintPriorPredictionFullSingleThreading() but here only for part of coordinate system.
 	void generatePriorPredictionColorTableSingleCore(int indexStart, int indexEnd, int threadIndex) {
 		for(int i = indexStart; i < indexEnd; i++) {
 			int xPixel = i * densityResolutionX;
@@ -416,7 +421,7 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 			for(int j = 0; j < priorPredictionColorTable[i].length; j++) {
 				int yPixel = j * densityResolutionY;
 				double yPos = getNumberFromPixel(xPixel, yPixel)[1];
-				int alpha = (int)(255.0 * refDataManager.evaluatePriorPredictionForPolynomialFullExternal(yPos, currentDensityParams[0], currentDensityParams[1]));
+				int alpha = (int)(255.0 * refDataManager.evaluatePriorPredictionFullExternal(yPos, currentDensityParams[0], currentDensityParams[1]));
 				int red = priorPredictionColor[2].getRed();
 				int green = priorPredictionColor[2].getGreen();
 				int blue = priorPredictionColor[2].getBlue();
@@ -425,13 +430,16 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	/* Iterate over all visible x and y and compute density at that point.
+	 * Then use value of density to determine alpha channel at that point.
+	 */
 	void paintPriorPredictionFullSinglethreading(Graphics g) {
 		for(int i = 0; i < getWidth(); i += densityResolutionX) {
 			double xPos = getNumberFromPixel(i, 0)[0];
 			refDataManager.preparePriorPredictionForRelativeEvaluation(xPos);
 			for(int j = 0; j < getHeight(); j += densityResolutionY) {
 				double yPos = getNumberFromPixel(i, j)[1];
-				int alpha = (int)(255.0 * refDataManager.evaluatePriorPredictionForPolynomialFull(yPos));
+				int alpha = (int)(255.0 * refDataManager.evaluatePriorPredictionFull(yPos));
 				int red = priorPredictionColor[2].getRed();
 				int green = priorPredictionColor[2].getGreen();
 				int blue = priorPredictionColor[2].getBlue();
@@ -441,14 +449,15 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	// See equivalent for prior
 	void paintPosteriorPredictionSimple(Graphics g) {
 		int resolution = 1;
 		Graphics2D g2 = (Graphics2D) g;
 		double xOld = getNumberFromPixel(0, 0)[0];
-		double[] yOld = refDataManager.evaluatePosteriorPredictionForPolynomialSimple(xOld);
+		double[] yOld = refDataManager.evaluatePosteriorPredictionSimple(xOld);
 		for(int i = 1; i < getWidth(); i += resolution) {
 			double xNew = getNumberFromPixel(i, 0)[0];
-			double[] yNew = refDataManager.evaluatePosteriorPredictionForPolynomialSimple(xNew);
+			double[] yNew = refDataManager.evaluatePosteriorPredictionSimple(xNew);
 			int[] pixelOldMid = getPixelFromNumber(xOld, yOld[0]);
 			int[] pixelOldBot = getPixelFromNumber(xOld, yOld[0] - yOld[1]);
 			int[] pixelOldTop = getPixelFromNumber(xOld, yOld[0] + yOld[1]);
@@ -465,6 +474,7 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	// See equivalent for prior
 	void paintPosteriorPredictionFull(Graphics g) {
 		if(useMultithreading) {
 			paintPosteriorPredictionFullMultithreading(g);
@@ -473,9 +483,9 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	// See equivalent for prior
 	void paintPosteriorPredictionFullMultithreading(Graphics g) {
 		int pixelsPerCore = (int)Math.ceil((double)getWidth() / (numCores * densityResolutionX));
-		// First generate the colors for all pixels using multithreading and store all values in posteriorPredictionColorTable
 		for(int i = 0; i < numCores; i++) {
 			final int helperI = i;
 			Thread t = new Thread(() -> 
@@ -490,13 +500,14 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	// See equivalent for prior
 	void paintPosteriorPredictionFullSinglethreading(Graphics g) {
 		for(int i = 0; i < getWidth(); i += densityResolutionX) {
 			double xPos = getNumberFromPixel(i, 0)[0];
 			refDataManager.preparePosteriorPredictionForRelativeEvaluation(xPos);
 			for(int j = 0; j < getHeight(); j += densityResolutionY) {
 				double yPos = getNumberFromPixel(i, j)[1];
-				int alpha = (int)(255.0 * refDataManager.evaluatePosteriorPredictionForPolynomialFull(yPos));
+				int alpha = (int)(255.0 * refDataManager.evaluatePosteriorPredictionFull(yPos));
 				int red = postPredictionColor[2].getRed();
 				int green = postPredictionColor[2].getGreen();
 				int blue = postPredictionColor[2].getBlue();
@@ -506,6 +517,7 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	// See equivalent for prior
 	void generatePosteriorPredictionColorTableSingleCore(int indexStart, int indexEnd, int threadIndex) {
 		for(int i = indexStart; i < indexEnd; i++) {
 			int xPixel = i * densityResolutionX;
@@ -514,7 +526,7 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 			for(int j = 0; j < posteriorPredictionColorTable[i].length; j++) {
 				int yPixel = j * densityResolutionY;
 				double yPos = getNumberFromPixel(xPixel, yPixel)[1];
-				int alpha = (int)(255.0 * refDataManager.evaluatePosteriorPredictionForPolynomialFullExternal(yPos, currentDensityParams[0], currentDensityParams[1]));
+				int alpha = (int)(255.0 * refDataManager.evaluatePosteriorPredictionFullExternal(yPos, currentDensityParams[0], currentDensityParams[1]));
 				int red = postPredictionColor[2].getRed();
 				int green = postPredictionColor[2].getGreen();
 				int blue = postPredictionColor[2].getBlue();
@@ -523,12 +535,14 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		}
 	}
 	
+	/* Draw coordinate lines at values of form a*10^b. Determine b in function for zoom.
+	 * Draw black lines at main axis x = 0 and y = 0
+	 */
 	void paintCoordinateGrid(Graphics g) {
 		Graphics2D g2 = (Graphics2D)g;
 	        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		g2.setStroke(new BasicStroke(strokeWidthGrid));
 	        
-		//draw coordinate grid
 		double gridSpacing = scaleOfCoordinates();
 		double horizontalGridHeight = Math.floor(botRightCorner[1] / gridSpacing) * gridSpacing;
 		do {
@@ -562,13 +576,13 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 			verticalGridWidth += gridSpacing;
 		}while(verticalGridWidth < botRightCorner[0]);
 		
-		//draw main axis
 		g2.setColor(Color.black);
 		int[] originPixel = getPixelFromNumber(0.0, 0.0);
 		g2.drawLine(0, originPixel[1], getWidth(), originPixel[1]);
 		g2.drawLine(originPixel[0], 0, originPixel[0], getHeight());
 	}
 	
+	// Iterate over all visible x. Evaluate basis functions at these x. Store them in array and then plot them.
 	void paintBasisFunctions(Graphics g) {
 		int resolution = 2;
 		Graphics2D g2 = (Graphics2D) g;
@@ -592,7 +606,10 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 			}
 		}
 	}
-
+	
+	/* Right mouse button: Add difference between new mouse position and starting mouse position as translation to coordinate grid
+	 * Left mouse button: Tell dataManager to move closest data point to current mouse position
+	 */
 	@Override
 	public void mouseDragged(MouseEvent me) {
 		if(SwingUtilities.isRightMouseButton(me)) {
@@ -616,14 +633,16 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		lastMousePosition[0] = me.getX();
 		lastMousePosition[1] = me.getY();
 	}
-
+	
+	// Tell dataManager to add new data point
 	@Override
 	public void mouseClicked(MouseEvent me) {
 		double[] numberPosition = getNumberFromPixel(me.getX(), me.getY());
 		refDataManager.addData(numberPosition);
 		repaint();
 	}
-
+	
+	// Remember current mouse position as starting point for possible mouse dragging
 	@Override
 	public void mousePressed(MouseEvent me) {
 		if(!mouseEventIsRunning) {
@@ -651,6 +670,7 @@ public class AnimationPanel extends JPanel implements MouseMotionListener, Mouse
 		
 	}
 
+	// Update zoom level
 	@Override
 	public void mouseWheelMoved(MouseWheelEvent mwe) {
 		zoomLevel += mwe.getPreciseWheelRotation() / 10.0;

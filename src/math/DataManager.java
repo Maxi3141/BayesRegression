@@ -33,6 +33,7 @@ public class DataManager {
 		refAniPanel = refAniPanelNew;
 	}
 	
+	// Updates new parameters of prior at all places where it is needed
 	public void setToNormalPrior(Matrix mu, Matrix sigma) {
 		normPrior = new NormalPrior(mu, sigma);
 		normPosterior.setPriorParameters(mu, sigma);
@@ -63,10 +64,12 @@ public class DataManager {
 		regAlgorithm.updateWeights(dataList);
 	}
 	
+	// Tell posterior that data has changed
 	void updatePolynomialNormalPosterior() {
 		normPosterior.setRegressionData(dataList, regAlgorithm.getOrder());
 	}
 	
+	// Tell posterior predictor that data has changed
 	void updatePolynomialPosteriorPredictor() {
 		postPredictor.setRegressionData(dataList, regAlgorithm.getOrder());
 	}
@@ -75,60 +78,73 @@ public class DataManager {
 		return regAlgorithm.evaluate(x);
 	}
 	
+	// Generate Phi from X
 	Matrix transformX(double x, int order) {
 		Matrix phi = new Matrix(order , 1);
 		phi.setColumn(0, regAlgorithm.transformX(x, order));
 		return phi;
 	}
 	
-	public double[] evaluatePriorForPolynomial(double level, double x) {
+	// Maximmize and minimize theta^T*x with constrained prior(theta) = level
+	public double[] evaluatePrior(double level, double x) {
 		Matrix phi = transformX(x, normPrior.getOrder());
 		return normPrior.constrainedOptima(level, phi);
 	}
 	
-	public double[] evaluatePosteriorForPolynomial(double level, double x) {
+	// Maximmize and minimize theta^T*x with constrained posterior(theta) = level
+	public double[] evaluatePosterior(double level, double x) {
 		return normPosterior.constrainedOptima(level, transformX(x, normPosterior.getOrder()));
 	}
 	
-	//Input: Point on x axis
-	//Output: Mean (return[0]) and variance (return[1]) of distribution at that x 
-	public double[] evaluatePriorPredictionForPolynomialSimple(double x) {
+	// Compute mean and variance of prior predictor at x
+	public double[] evaluatePriorPredictionSimple(double x) {
 		return priorPredictor.evaluateTotal(transformX(x, priorPredictor.getOrder()));
 	}
 	
+	// Make prior predictor compute mean and variance at x and store them as variables in prior predictor
 	public void preparePriorPredictionForRelativeEvaluation(double x) {
 		priorPredictor.prepareRelativeEvaluation(transformX(x, priorPredictor.getOrder()));
 	}
 	
+	// Compute mean and variance of prior predictor at x
 	public double[] preparePriorPredictionForRelativeEvaluationExternal(double x) {
 		return priorPredictor.prepareRelativeEvaluationExternal(transformX(x, priorPredictor.getOrder()));
 	}
 	
-	public float evaluatePriorPredictionForPolynomialFull(double y) {
+	/* Evaluate prior predictor density at y with earlier prepared mean and variance
+	*  -> Call preparePriorPredictionForRelativeEvaluation() before
+	*/
+	public float evaluatePriorPredictionFull(double y) {
 		return (float)priorPredictor.evaluateRelative(y);
 	}
 	
-	public float evaluatePriorPredictionForPolynomialFullExternal(double y, double extMean, double extVariance) {
+	// Evaluate prior predictor density at y with external mean and variance
+	public float evaluatePriorPredictionFullExternal(double y, double extMean, double extVariance) {
 		return (float)priorPredictor.evaluateRelativeExternal(y, extMean, extVariance);
 	}
 	
-	public double[] evaluatePosteriorPredictionForPolynomialSimple(double x) {
+	// See equivalent for prior
+	public double[] evaluatePosteriorPredictionSimple(double x) {
 		return postPredictor.evaluateTotal(transformX(x, postPredictor.getOrder()));
 	}
 	
+	// See equivalent for prior
 	public void preparePosteriorPredictionForRelativeEvaluation(double x) {
 		postPredictor.prepareRelativeEvaluation(transformX(x, postPredictor.getOrder()));
 	}
 	
+	// See equivalent for prior
 	public double[] preparePosteriorPredictionForRelativeEvaluationExternal(double x) {
 		return postPredictor.prepareRelativeEvaluationExternal(transformX(x, postPredictor.getOrder()));
 	}
 	
-	public float evaluatePosteriorPredictionForPolynomialFull(double y) {
+	// See equivalent for prior
+	public float evaluatePosteriorPredictionFull(double y) {
 		return (float)postPredictor.evaluateRelative(y);
 	}
 	
-	public float evaluatePosteriorPredictionForPolynomialFullExternal(double y, double extMean, double extVariance) {
+	// See equivalent for prior
+	public float evaluatePosteriorPredictionFullExternal(double y, double extMean, double extVariance) {
 		return (float)postPredictor.evaluteRelativeExternal(y, extMean, extVariance);
 	}
 	
